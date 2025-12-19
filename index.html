@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora Maestra de Ventas</title>
+    <style>
+        body { font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f4f6f8; margin: 0; padding: 20px; }
+        .container { max-width: 400px; margin: 0 auto; background: white; padding: 25px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        h2 { text-align: center; color: #2c3e50; margin-top: 0; font-size: 1.5em; }
+        
+        label { display: block; margin-top: 15px; margin-bottom: 5px; color: #555; font-weight: 700; font-size: 0.9em; }
+        input, select { width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; box-sizing: border-box; font-size: 16px; background-color: #fff; transition: border-color 0.2s; }
+        input:focus, select:focus { border-color: #007bff; outline: none; }
+        
+        button { width: 100%; padding: 15px; background-color: #007bff; color: white; border: none; border-radius: 10px; font-size: 16px; font-weight: 800; text-transform: uppercase; cursor: pointer; margin-top: 25px; box-shadow: 0 4px 6px rgba(0,123,255,0.2); transition: background 0.2s; }
+        button:hover { background-color: #0056b3; }
+
+        /* Estilos de Resultados */
+        .result-section { margin-top: 25px; display: none; animation: slideUp 0.4s ease-out; }
+        .card { padding: 15px; border-radius: 12px; margin-bottom: 15px; text-align: center; position: relative; }
+        
+        /* Caja Mensual */
+        .monthly-box { background-color: #e3f2fd; border: 1px solid #90caf9; }
+        .monthly-val { font-size: 26px; font-weight: 800; color: #1565c0; margin: 5px 0; }
+        
+        /* Caja Anual */
+        .annual-box { background-color: #fff8e1; border: 2px solid #ffca28; box-shadow: 0 4px 10px rgba(255, 193, 7, 0.15); }
+        .annual-label { font-size: 0.8em; text-transform: uppercase; letter-spacing: 1px; color: #f57f17; font-weight: 800; }
+        .annual-val { font-size: 34px; font-weight: 900; color: #ff6f00; margin: 5px 0; }
+        
+        /* Texto de Venta */
+        .pitch-text { font-size: 14px; color: #546e7a; font-style: italic; margin-top: 8px; line-height: 1.4; padding: 0 5px; }
+        
+        .hidden { display: none; }
+        
+        /* Estilos para estado Negativo (Más caro) */
+        .negative-flow .monthly-box { background-color: #ffebee; border-color: #ef9a9a; }
+        .negative-flow .monthly-val { color: #c62828; }
+        .negative-flow .annual-box { background-color: #fafafa; border-color: #e0e0e0; box-shadow: none; }
+        .negative-flow .annual-val { color: #616161; font-size: 28px; }
+        .negative-flow .annual-label { color: #757575; }
+        
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>📱 Comparador de Plan</h2>
+
+    <label>Tipo de cliente:</label>
+    <select id="tipoConsumo" onchange="toggleInputs()">
+        <option value="recarga">Usa Recargas (Prepago)</option>
+        <option value="factura">Tiene Factura Fija</option>
+    </select>
+
+    <div id="inputRecargas">
+        <label>Monto de recarga ($):</label>
+        <input type="number" id="montoRecarga" placeholder="Ej: 2.00" inputmode="decimal">
+        
+        <label>¿Cada cuánto se le acaba?</label>
+        <select id="frecuenciaRecarga">
+            <option value="1">Diario (1 día)</option>
+            <option value="2">Cada 2 días</option>
+            <option value="3">Cada 3 días</option>
+            <option value="4">Cada 4 días</option>
+            <option value="5">Cada 5 días</option>
+            <option value="6">Cada 6 días</option>
+            <option value="7">Semanal (7 días)</option>
+            <option value="8">Cada 8 días</option>
+            <option value="9">Cada 9 días</option>
+            <option value="10">Cada 10 días</option>
+            <option value="15">Quincenal (15 días)</option>
+            <option value="30">Mensual (30 días)</option>
+        </select>
+    </div>
+
+    <div id="inputFactura" class="hidden">
+        <label>Su factura actual ($):</label>
+        <input type="number" id="montoMensual" placeholder="Ej: 35.00" inputmode="decimal">
+    </div>
+
+    <label style="color: #007bff;">Precio TU Oferta ($):</label>
+    <input type="number" id="miPrecio" placeholder="Ej: 25.00" inputmode="decimal">
+
+    <button onclick="calcular()">CALCULAR AHORRO</button>
+
+    <div id="resultados" class="result-section">
+        
+        <div class="card monthly-box">
+            <div style="font-size: 0.9em; margin-bottom: 5px; opacity: 0.8;">Diferencia Mensual:</div>
+            <div id="resMensual" class="monthly-val">$0.00</div>
+            <div id="resPorcentaje" style="font-size: 0.85em; font-weight: 600;">0%</div>
+        </div>
+
+        <div class="card annual-box">
+            <div class="annual-label">🔥 Proyección Anual</div>
+            <div id="resAnual" class="annual-val">$0.00</div>
+            <div id="resPitch" class="pitch-text"></div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    function toggleInputs() {
+        const tipo = document.getElementById('tipoConsumo').value;
+        const divRecarga = document.getElementById('inputRecargas');
+        const divFactura = document.getElementById('inputFactura');
+        
+        if (tipo === 'recarga') {
+            divRecarga.classList.remove('hidden');
+            divFactura.classList.add('hidden');
+        } else {
+            divRecarga.classList.add('hidden');
+            divFactura.classList.remove('hidden');
+        }
+    }
+
+    function calcular() {
+        // 1. Obtener Datos
+        let gastoActual = 0;
+        const tipo = document.getElementById('tipoConsumo').value;
+
+        if (tipo === 'recarga') {
+            const monto = parseFloat(document.getElementById('montoRecarga').value) || 0;
+            const dias = parseInt(document.getElementById('frecuenciaRecarga').value);
+            // Fórmula exacta: (30 días / frecuencia) * monto
+            gastoActual = (30 / dias) * monto;
+        } else {
+            gastoActual = parseFloat(document.getElementById('montoMensual').value) || 0;
+        }
+
+        const miPrecio = parseFloat(document.getElementById('miPrecio').value) || 0;
+
+        // Validación simple
+        if (document.getElementById('montoRecarga').value === "" && tipo === 'recarga') return;
+        if (document.getElementById('miPrecio').value === "") return;
+
+        // 2. Calcular Diferencias
+        const difMensual = gastoActual - miPrecio;
+        const difAnual = difMensual * 12;
+        
+        // Evitar división por cero
+        let porcentaje = 0;
+        if(gastoActual > 0) {
+            porcentaje = ((difMensual / gastoActual) * 100).toFixed(0);
+        }
+
+        // 3. Renderizar
+        const resultados = document.getElementById('resultados');
+        const boxMensual = document.getElementById('resMensual');
+        const boxAnual = document.getElementById('resAnual');
+        const boxPitch = document.getElementById('resPitch');
+        
+        // Resetear animación forzando reflow (truco para que anime si ya estaba abierto)
+        resultados.classList.remove('result-section');
+        void resultados.offsetWidth; 
+        resultados.classList.add('result-section');
+        resultados.style.display = 'block';
+
+        if (difMensual >= 0) {
+            // -- ESCENARIO: AHORRO (Positivo) --
+            resultados.classList.remove('negative-flow');
+            
+            boxMensual.innerText = `Ahorras $${difMensual.toFixed(2)}`;
+            document.getElementById('resPorcentaje').innerText = `Tu factura baja un ${porcentaje}%`;
+            
+            document.querySelector('.annual-label').innerText = "🔥 Ahorro Anual Proyectado";
+            boxAnual.innerText = `$${difAnual.toFixed(2)}`;
+            
+            // Mensajes aleatorios de motivación de ahorro
+            const frases = [
+                "¡Increíble! Es dinero suficiente para pagar el internet de casa varios meses.",
+                "Con este ahorro anual, prácticamente te sale gratis un teléfono nuevo gama media.",
+                "Ese dinero hoy se está yendo en 'gasto hormiga'. ¡Mejor guárdalo en tu bolsillo!"
+            ];
+            boxPitch.innerText = frases[Math.floor(Math.random() * frases.length)];
+
+        } else {
+            // -- ESCENARIO: INVERSIÓN (Tu plan cuesta más) --
+            resultados.classList.add('negative-flow');
+            
+            const costoExtra = Math.abs(difMensual).toFixed(2);
+            const costoDiario = (Math.abs(difMensual) / 30).toFixed(2);
+            
+            boxMensual.innerText = `$${costoExtra} extra`;
+            document.getElementById('resPorcentaje').innerText = "Diferencia mensual";
+
+            document.querySelector('.annual-label').innerText = "Costo del Beneficio Ilimitado";
+            boxAnual.innerText = `$${costoDiario} / día`;
+            
+            boxPitch.innerText = `💡 Piénsalo: Por solo $${costoDiario} centavos extra al día (menos que un chicle), tienes internet ilimitado y te olvidas de recargar.`;
+        }
+    }
+</script>
+
+</body>
+</html>
